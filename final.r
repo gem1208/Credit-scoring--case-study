@@ -24,13 +24,9 @@ dane_geo <- read.csv2("final_data.csv", header = T, sep = ",", dec = ".")
 #filtering out the data without DefFlags
 
 #useful variables - means, maximums and minimums for three groups of variables: DPD, NotionalOverdue, NotionalValue
-# for example mean_dpd3 stands for mean calculated for dpd over previous three months
-# variables for 3,6,9 and 12 months were retained in the dataset but you can change that if needed
-
-
 
 dane_geo <- dane_geo %>% 
-  ##średnie i maksima dla zmiennych dpd
+  ## dpd
   mutate( mean_dpd2 = rowMeans(select(.,DPD_lag1:DPD_lag2)),
           mean_dpd3 = rowMeans(select(.,DPD_lag1:DPD_lag3)),
           mean_dpd4 = rowMeans(select(.,DPD_lag1:DPD_lag4)),
@@ -64,7 +60,7 @@ dane_geo <- dane_geo %>%
           min_dpd10 = apply(select(., DPD_lag1:DPD_lag10),1,min),
           min_dpd11 = apply(select(., DPD_lag1:DPD_lag11),1,min),
           min_dpd12 = apply(select(., DPD_lag1:DPD_lag12),1,min),
-          #średnie i maksima dla zmiennych NotionalValue
+ # NotionalValue
           mean_nval2 = rowMeans(select(.,NotionalValue_lag1:NotionalValue_lag2)),
           mean_nval3 = rowMeans(select(.,NotionalValue_lag1:NotionalValue_lag3)),
           mean_nval4 = rowMeans(select(.,NotionalValue_lag1:NotionalValue_lag4)),
@@ -98,7 +94,7 @@ dane_geo <- dane_geo %>%
           min_nval10 = apply(select(., NotionalValue_lag1:NotionalValue_lag10),1,min),
           min_nval11 = apply(select(., NotionalValue_lag1:NotionalValue_lag11),1,min),
           min_nval12 = apply(select(., NotionalValue_lag1:NotionalValue_lag12),1,min),
-          #średnie i maksima dla zmiennych NotionalOverdue
+   #NotionalOverdue
           mean_novd2 = rowMeans(select(.,NotionalOverdue_lag1:NotionalOverdue_lag2)),
           mean_novd3 = rowMeans(select(.,NotionalOverdue_lag1:NotionalOverdue_lag3)),
           mean_novd4 = rowMeans(select(.,NotionalOverdue_lag1:NotionalOverdue_lag4)),
@@ -166,11 +162,6 @@ validation_geo <- set_geo$validation
 
 #pca is a technique meant to reduce the dimensionality of a dataset with highly correlated variables
 #pca was performed on 3 groups of highly correlated variables: DPD, NationalValue, NotionalOverdue
-# for DPD 3 principal components were retained: dpd_pc1, dpd_pc2, dpd_pc3
-# for NOtionaValue 1 principal component was retained: nval_pc1
-# for NotionalOverdue 4 principal components were retained: novd_pc1, novd_pc2, novd_pc3, novd_pc4
-# for each group retained components represent more than 90% of the variance of input variables
-# the principal components are not correlated with one another so if they are significant you can use all of them in your model
 
 pca_dpd <- prcomp(select(training_geo, DPD_lag1:DPD_lag12), scale = TRUE, center = TRUE)
 vd_dpd_pc <- as.data.frame(predict(pca_dpd, newdata = select(validation_geo, DPD_lag1:DPD_lag12)))
@@ -241,13 +232,7 @@ prog_geo <-  prog_geo %>% select(Application_ID: Unemployed_highschool_and_lower
                                          nval_pc1,
                                          novd_pc1, novd_pc2, novd_pc3, novd_pc4,
                                          NotionalOverdue_t0, NotionalValue_t0, DPD_t0)
-# functions undersample and oversample are meant to make our dataset balanced
-# function undersample is keeping all observations with flag "1" and chooses randomly a number of "0"s
-# in order to achieve the desired fraction of "1"s in the sample for example
-#if we want to have 50% of ones in our training set and we have 5000 obs with 1 it will randomly choose 5000 "0"s
-#with or without replacement
-#oversample samples observations with "1" with replacement to achieve the same result
-#generaly speaking undersampling seems a better idea
+# functions undersample and oversample
 #resampled is a set which was build using this function
 UnderSample <- function(dane, target , target_prop =  0.5, replacement = F ){
 
@@ -269,44 +254,20 @@ return(new_sample)
 
 }
 
-
 resampled_geo <- UnderSample(training_geo, training_geo$DefFlag, 0.5)
-
-
-
-
-
-#the purpose of categorization is to enable us to measure the dependence between our predictor variables
-#and the target DefFlag
-#we can use a variety of measures like chi2 test, out V-Cramer coefficient but the function WOE returns
-#automatically IV (Information Value) - higher values implies stronger relationship (better for us)
-
-
-
-# WoeBinning categorizes variables according to the target variable in order to achieve the
-#best discrimination power i.e. the ablility to distinguish ones from zeros
-#description of the arguments: https://cran.r-project.org/web/packages/woeBinning/woeBinning.pdf
 
 
 #categorization of all the numeric variables
 #tabulate.binning contains the categories, distributions and Woe of categorized variables
 
 
-#kategoryzacja wszystkich zmiennych numeric
-#jako tabulate.binning zapisuje, kategorie, rozk?ady, WOE pokategoryzowanych zmiennych
-#jako BinPlot zapisuje wykresy pokategoryzowanych zmiennych i wykres variables w kolejnosci information value
-#wi?kszo?? dzieli na dwie kategorie, trzeba by popatrze? indywidualnie na rozk?ady zmiennych
-#w zbiorze binned -> skopiowany zbi?r resampled+dodane zmienne pokategoryzowane
-
 ## the training.binned and validation.binned contain binned variables
-## you can use them or not according to your preference
-## they enable you to take account of nonlinear relationships in the data
-# and are robust against outliers
+
 binned_geo <- resampled_geo
 
 ###binning of the dataset with added geographical variables
 
-##i added someiprovements i exclude variables for which i have calculated minimums and maximums
+##i added some iprovements i exclude variables for which i have calculated minimums and maximums
 
 WoeBinning_geo <- function(target, variable, min.perc.total, min.perc.class, stop.limit, event.class){
   
@@ -328,10 +289,6 @@ num_names <- num_names[num_names!= "DefFlag" & num_names != "GEO_region"]
 WoeBinning_geo('DefFlag', num_names, min.perc.total=0.01, min.perc.class=0.01,
            stop.limit=0.1, event.class='bad')
 
-## the training.binned and validation.binned contain binned variables
-## you can use them or not according to your preference
-## they enable you to take account of nonlinear relationships in the data
-# and are robust against outliers
 training_geo.binned <- woe.binning.deploy(training_geo, binning_geo)
 validation_geo.binned <- woe.binning.deploy(validation_geo, binning_geo)
 prog_geo.binned <- woe.binning.deploy(prog_geo, binning_geo)
@@ -345,7 +302,7 @@ iv_geo <- as.data.frame(binning_geo[,c(1,3)], col.names = c("zmienna", "iv") )
 best_iv_geo <- iv_geo[iv_geo$V2 > 0.02,]  %>% select(V1) %>% unlist() %>% unname()
 
 
-####NOWA CZĘŚĆ
+####
 tree <- ClustOfVar::hclustvar(binned_geo[,best_iv_geo])
 plot(tree)
 
@@ -376,8 +333,6 @@ clust_best <- setdiff(clust_best, c("max_novd3", "mean_dpd12","NotionalOverdue_t
 
 ######
 
-
-##współczynniki chi2 pomiędzy pobinowanymi zmiennymi i DefFlagiem
 #chi2 test between all factor variables in the input dataframe and the target variable
 df_chisq_test <- function(df, target_variable){
   target <- as.factor(df[,target_variable])
@@ -413,10 +368,7 @@ korelacja <- cor(as.matrix(binned_geo[,best_iv_geo]))
 ## best_20 is a vector with 20 best variables
 ## best_20_geo contains also the geographical variables
 
-
-
 #-----
-#Drzewa z boostingiem gradientowym
 
 #best_predictors_up_to_date predictors <- select(binned, best_20_iv, Job_type:Monthly_Spendings) 
 
@@ -448,22 +400,8 @@ dmodel <- xgb.DMatrix(data =  data.matrix(mt_model), label = data.matrix(binned_
 watchlist = list(train = dtrain, test = dtest)
 
 
-
 #-----  
-# XGBOOST na najlepszych 20 pobinowanych zmiennych
-# 4 - 600 - 50,9 - to jest mój jak dotychczas najlepszy model
-#subsample 0.4 - GINI 51,1
-
-#4-600 i 20 najlepszych zmiennych według iv daje GINI 52,5 na zbiorze testowym
-#najlepszy model to było zmienne z IV większym niż 0.15, ze zbioru dane (bez zmiennych geograficznych i ze wszystkimi zmiennymi dla których liczyłem max i min itp.)
-
-
-#najlepszy model i najlepsze zmienne
-#best_20_iv_geo <- iv_geo[iv_geo$V2 > 0.15,]  %>% select(V1) %>% unlist() %>% unname()
-
-#bst <- xgboost::xgb.train(data = dmodel, max.depth = 4,
-#                          nrounds = 500 , eta = 0.01, subsample = 0.8, gamma = 1,colsample_bytree = 0.8, watchlist = watchlist, eval.metric = "auc", eval.metric = "rmse", verbose = F, objective = "binary:logistic")
-
+# XGBOOST with the best 20 variables
 
 bst <- xgboost::xgb.train(data = dmodel, max.depth = 4,
                           nrounds = 1000 , eta = 0.01, subsample = 0.8, gamma = 1,colsample_bytree = 0.8, watchlist = watchlist, eval.metric = "auc", eval.metric = "rmse", verbose = F, objective = "binary:logistic")
@@ -484,7 +422,7 @@ top_features <- importance_matrix[c(1:11),1]
 top_features <- unlist(top_features)
 xgb.plot.importance(importance_matrix = importance_matrix)
 
-# ocenanie drzew z boostingiem xgboost-----------------------------------------------------------
+# -----------------------------------------------------------
 
 
 model <- bst
@@ -571,5 +509,12 @@ print(Gini_test)
 #write.csv(training_geo.binned, "training_geo_binned.csv")
 #write.csv(validation_geo.binned, "validation_geo_binned_geo.csv")
 #write.csv(binned_geo[,best_20_iv_geo], "binned_geo.csv")
+
+
+
+
+
+
+
 
 

@@ -31,23 +31,6 @@ pred2 <-predict(mod2, newdata = valid, type= "response")
 #predict values for validation set
 
 
-
-# -----------------------------------------------------------------------------
-# 
-#   Author(s):      Pwc 
-# 
-#   Date     :      05.03.2019 14:41:28 
-# 
-#   Descr    :      The script presents two ways for Gini index calculation:
-#                   - define and use Gini_value() function 
-#                     ( execution time ~ 1 sec for 100k observations)
-#                   - use rcorr.cens() function from Hmisc package 
-#                     ( execution time ~ 50 sec for 100k observations)
-# 
-# -----------------------------------------------------------------------------
-
-
-
 # Input data format
 
 #'> head(test_data)

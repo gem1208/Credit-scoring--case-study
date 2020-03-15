@@ -1,5 +1,3 @@
-#Write an e-mail to Marek Antosiewicz (mantosi@sgh.waw.pl) with team members and information when team will present results 
-#and also ask for full dataset
 
 rm(list = ls())
 
